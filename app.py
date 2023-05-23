@@ -3,9 +3,15 @@ import tensorflow as tf
 import cv2
 import  numpy as np
 import json
+from flask_cors import CORS
+from flask_restful import Api
+import base64
+from io import BytesIO
 
 # 플라스크 시작
 app = Flask(__name__)
+CORS(app, supports_credentials=True) # 다른 포트번호에 대한 보안 제거
+api = Api(app)
 
 model = tf.keras.models.load_model('model/model.h5')
 
@@ -29,9 +35,12 @@ def load_file():
 
 @app.route('/predict', methods=['GET', 'POST'])
 def predict():
-    print(request.files)
-    file = request.files['file']
-    img = cv2.imdecode(np.frombuffer(file.read(), np.uint8), cv2.IMREAD_UNCHANGED)
+    print(request.form)
+    image_data = request.form['file']
+    image_data_decoded = base64.b64decode(image_data.split(',')[1])
+
+    img = cv2.imdecode(np.frombuffer(BytesIO(image_data_decoded).read(), np.uint8), cv2.IMREAD_UNCHANGED)
+    #img = cv2.imdecode(np.frombuffer(image_data_decoded.read(), np.uint8), cv2.IMREAD_UNCHANGED)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     img = cv2.resize(img, (416, 416))
     img = img / 255.0
@@ -43,26 +52,29 @@ def predict():
                    8: 'Ramyun', 9: 'Pizza', 10: 'Yangnyumchicken', 11: 'Friedchicken', 12: 'BaechuKimchi', 13: 'Kkakdugi', 14: 'Bulgogi',
                    15: 'Godeungeogui', 16: 'Zzajangmyun', 17: 'Zzambbong', 18: 'Friedegg', 19: 'Gyeranjjim'}
     results = []
+    classes_seen = set()
     for output in predictions:
         for detection in output:
             max_class = int(np.argmax(detection[5:]))
             confidence = float(detection[5 + max_class])
-            if confidence >= 0.1:
+            if confidence >= 0.7:
                 class_name = class_names[max_class + 1]
-                obj = {
-                    "class": class_name,
-                    "confidence": confidence,
-                    "x": float(detection[0]),
-                    "y": float(detection[1]),
-                    "w": float(detection[2] - detection[0]),
-                    "h": float(detection[3] - detection[1])
-                }
-                results.append(obj)
+                if class_name not in classes_seen:
+                    obj = {
+                        "class": class_name,
+                        "confidence": confidence,
+                        "x": float(detection[0]),
+                        "y": float(detection[1]),
+                        "w": float(detection[2] - detection[0]),
+                        "h": float(detection[3] - detection[1])
+                    }
+                    results.append(obj)
+                    classes_seen.add(class_name)
     results = sorted(results, key=lambda x: x['confidence'], reverse=True)
     return json.dumps(results)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0',debug=True, port=80)
+    app.run(host='0.0.0.0',debug=True, port=1080)
 
 '''
     "x": int(detection[0]),
