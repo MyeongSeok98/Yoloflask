@@ -8,23 +8,22 @@ from flask_restful import Api
 import base64
 from io import BytesIO
 
-# 플라스크 시작
+# run flask
 app = Flask(__name__)
-CORS(app, supports_credentials=True) # 다른 포트번호에 대한 보안 제거
+CORS(app, supports_credentials=True) # disable security other port
 api = Api(app)
-
 model = tf.keras.models.load_model('model/model.h5')
 
 path = './image/Zzim.jpg'
 with open(path, 'rb') as f:
 	data = f.read()
 
-# 루트 파일
+# route file
 @app.route('/')
 def index():
 	return render_template('index.html')
 
-# HTML 파일 추가
+# add HTML file
 @app.route('/home')
 def home():
 	return render_template('index.html')
