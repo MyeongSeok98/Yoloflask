@@ -18,7 +18,7 @@ path = './image/Zzim.jpg'
 with open(path, 'rb') as f:
 	data = f.read()
 
-# route file
+# route file1
 @app.route('/')
 def index():
 	return render_template('index.html')
